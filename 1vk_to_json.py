@@ -13,6 +13,8 @@ from shutil import copyfile
 import json
 import sys
 import pickle
+import math
+import multiprocessing as mp
 
 
 
@@ -42,52 +44,7 @@ import pickle
 
 #Define global vars
 
-api_version = '5.89'
-path_in = './data_in/'
-path_out = './data_out/'
-ext = '.csv'
-file_name_in = 'unique_users'+ext
-# file_user_to_friend = 'user_to_friend/user_to_friend' 
-# file_friend_data = 'friend_data/friend_data'
-# file_group_data = 'group_data/group_data'
-# file_friend_to_group = 'user_to_group/user_to_group'
-file_user_to_group_json = path_out + 'user_to_group_json/user_to_group_data_json'
-file_friend_data_json = path_out + 'friend_data_json/friend_data_json'
-file_user_to_friend = path_out +  'user_to_friend_json/user_to_friend_json'
-path_stat = path_out + 'stat/'
-file_stat = 'statistics_json.csv'
-file_log = 'log.txt' 
-### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
-# list_dirs = [path_out+file_user_to_friend.split('/')[0]+'/', 
-#                 path_out+file_friend_data.split('/')[0]+'/',
-#                 path_out+file_group_data.split('/')[0]+'/',
-#                 path_out+file_friend_to_group.split('/')[0]+'/',
-#                 path_stat
-#             ]
-# for list_dir in list_dirs:
-#     list_file_dir = os.listdir(list_dir)
-#     if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
-#     for file_remove in list_file_dir:
-#         os.remove(list_dir+file_remove)
-#########################################################  
-      
-with open('./data_in/token_dict.txt', 'rb') as handle:
-    token_dict = pickle.loads(handle.read()) 
-print(token_dict)
 
-i_token = 1
-fields_param = 'country,sex,bdate,city,country'\
-                ',photo_max_orig, online_mobile,has_mobile,contacts'\
-                ',connections,site,education,universities,schools,'\
-                ',can_write_private_message,status,last_seen,relation,relatives'
-friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
-                      'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
-                      'faculty', 'graduation', 'last_seen_real']
-user_to_friend_list = ['user_id','friend_id']
-user_to_group_list = ['user_id', 'group_id']
-group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
-column_statistics = ['user_number', 'user_id', 'n_friends', 'start_time', 
-                    'end_time','start_fmt', 'end_fmt', 'time_user']
 def read_stat_data():
     if (file_stat in os.listdir(path_stat)) == False:
         users_in_files = 0
@@ -120,7 +77,7 @@ def read_stat_data():
     n_users_completed = len(user_used_list)
     return user_list, total_number_users, n_users_completed
 
-user_list, total_number_users, n_users_completed = read_stat_data()
+
 
 def update_statistics(i, user_id, n_members, column_statistics, start_time, start_fmt):
     ####### update statistics##################
@@ -139,11 +96,131 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     path_out = './output_friends_and_group/'
     #     path_stat = path_out + 'statistics/'
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
-    # return 0    
+    return 0
+
+def parse_vk(i):
+    # print(user_list[i])
+    # a = 100000*100000 + 3*10000000+100000*60000000
+    result = 1 # user_list[i]
+    # time.sleep(2)
+    time.sleep(2)
+    return (i, result)
+
+
+def get_result(result):
+    global results
+    results.append(result)
+
+# asynch: https://towardsdatascience.com/asynchronous-parallel-programming-in-python-with-multiprocessing-a3fc882b4023
+if __name__ == '__main__':
+#### GLOBAL VAR #################
+    api_version = '5.89'
+    path_in = './data_in/'
+    path_out = './data_out/'
+    ext = '.csv'
+    file_name_in = 'unique_users'+ext
+    # file_user_to_friend = 'user_to_friend/user_to_friend' 
+    # file_friend_data = 'friend_data/friend_data'
+    # file_group_data = 'group_data/group_data'
+    # file_friend_to_group = 'user_to_group/user_to_group'
+    file_user_to_group_json = path_out + 'user_to_group_json/user_to_group_data_json'
+    file_friend_data_json = path_out + 'friend_data_json/friend_data_json'
+    file_user_to_friend = path_out +  'user_to_friend_json/user_to_friend_json'
+    path_stat = path_out + 'stat/'
+    file_stat = 'statistics_json.csv'
+    file_log = 'log.txt' 
+    ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
+    # list_dirs = [path_out+file_user_to_friend.split('/')[0]+'/', 
+    #                 path_out+file_friend_data.split('/')[0]+'/',
+    #                 path_out+file_group_data.split('/')[0]+'/',
+    #                 path_out+file_friend_to_group.split('/')[0]+'/',
+    #                 path_stat
+    #             ]
+    # for list_dir in list_dirs:
+    #     list_file_dir = os.listdir(list_dir)
+    #     if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
+    #     for file_remove in list_file_dir:
+    #         os.remove(list_dir+file_remove)
+    #########################################################  
+        
+    with open('./data_in/token_dict.txt', 'rb') as handle:
+        token_dict = pickle.loads(handle.read()) 
+    print(token_dict)
+
+    i_token = 1
+    fields_param = 'country,sex,bdate,city,country'\
+                    ',photo_max_orig, online_mobile,has_mobile,contacts'\
+                    ',connections,site,education,universities,schools,'\
+                    ',can_write_private_message,status,last_seen,relation,relatives'
+    friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
+                        'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
+                        'faculty', 'graduation', 'last_seen_real']
+    user_to_friend_list = ['user_id','friend_id']
+    user_to_group_list = ['user_id', 'group_id']
+    group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
+    column_statistics = ['user_number', 'user_id', 'n_friends', 'start_time', 
+                        'end_time','start_fmt', 'end_fmt', 'time_user']
+
+    #### GLOBAL VAR ENDED #################                    
+
+    user_list, total_number_users, n_users_completed = read_stat_data()
+    batch_size = 10
+    results = []
+    ts = time.time()
+
+    for i in range(0, batch_size):
+        get_result(parse_vk(i))
+    print('Time in serial:', time.time() - ts)
+    # print(results)
+
+    
+    ts = time.time()
+    
+    # for i in range(0, params.shape[0]):
+    #     pool.apply_async(my_function, args=(i, params[i, 0], params[i, 1], params[i, 2]), callback=get_result)
+    # pool.close()
+    # pool.join()
+    # print('Time in parallel:', time.time() - ts)
+    # print(results)    
+
+    results = []
+    batch_cnt = math.ceil(len(user_list) / batch_size)
+    
+    time_list = []
+    
+    for i in range(batch_cnt):
+        time_iter_begin = time.time()
+        if batch_size*(i+1) <= len(user_list):
+            i_start = batch_size*i
+            i_end = batch_size*(i+1)
+        else:
+            i_start = batch_size*i
+            i_end = len(user_list)
+#            display(dataset.iloc[i_start:i_end, :])  
+        pool = mp.Pool(mp.cpu_count())
+        print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
+        time_begin = time.time()
+        for j in range(i_start, i_end):
+            # pool.apply_async(my_function, args=(i, params[i, 0], params[i, 1], params[i, 2]), callback=get_result) 
+            pool.apply_async(parse_vk, args=(j), callback=get_result) 
+        print('Time in parallel:', time.time() - ts)    
+        pool.close()
+        pool.join()
+        
+        # print(results) 
+        print("1 loop ended!") 
+        break      
+ 
+
+
+
+
+
 # for i, user_id in enumerate(user_list):
 #     start_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
 #     start_time = time.time()
-#     i+=index_start
+#     # i+=index_start
+
 #     i+=n_users_completed
 #     #### CREATE & REFRASH DATAFRAMES #####
 #     df_friend_data = pd.DataFrame(columns=friend_column_list)
