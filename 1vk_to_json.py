@@ -15,46 +15,50 @@ import sys
 
 
 
-api_version = '5.89'
-path_in = 'output_unique_users/'
-path_fr_gr_out = './output_friends_and_group_json/'
 
-process_number = input('Enter the process number: ')
-process_number = int(process_number)
-# parrallel processing : https://www.machinelearningplus.com/python/parallel-processing-python/
-###############################
-if process_number == 1:
-    start_for_number = "start_for_number 1"
-    path_stat = path_fr_gr_out + 'statistics_json_df_1/'
-    file_name_in = 'unique_users_1.csv'
-elif process_number == 2:
-    start_for_number = "start_for_number 2"
-    path_stat = path_fr_gr_out + 'statistics_json_df_2/'
-    file_name_in = 'unique_users_2.csv'
-elif process_number == 3:
-    start_for_number = "start_for_number 3"
-    path_stat = path_fr_gr_out + 'statistics_json_df_3/'
-    file_name_in = 'unique_users_3.csv'
-else:
-    print("Raw input error! Try again...") 
-    sys.exit()   
+
+# process_number = input('Enter the process number: ')
+# process_number = int(process_number)
+# # parrallel processing : https://www.machinelearningplus.com/python/parallel-processing-python/
+# ###############################
+# if process_number == 1:
+#     start_for_number = "start_for_number 1"
+#     path_stat = path_out + 'statistics_json_df_1/'
+#     file_name_in = 'unique_users_1.csv'
+# elif process_number == 2:
+#     start_for_number = "start_for_number 2"
+#     path_stat = path_out + 'statistics_json_df_2/'
+#     file_name_in = 'unique_users_2.csv'
+# elif process_number == 3:
+#     start_for_number = "start_for_number 3"
+#     path_stat = path_out + 'statistics_json_df_3/'
+#     file_name_in = 'unique_users_3.csv'
+# else:
+#     print("Raw input error! Try again...") 
+#     sys.exit()   
 
 #########################################
 
+#Define global vars
+
+api_version = '5.89'
+path_in = './data_in/'
+path_out = './data_out/'
 ext = '.csv'
-file_user_to_friend = 'user_to_friend/user_to_friend' 
-file_friend_data = 'friend_data/friend_data'
-file_group_data = 'group_data/group_data'
-file_friend_to_group = 'user_to_group/user_to_group'
-file_user_to_group_json = 'user_to_group_json/user_to_group_data'
-file_friend_data_json = 'friend_data_json/friend_data'
+# file_user_to_friend = 'user_to_friend/user_to_friend' 
+# file_friend_data = 'friend_data/friend_data'
+# file_group_data = 'group_data/group_data'
+# file_friend_to_group = 'user_to_group/user_to_group'
+file_user_to_group_json = path_out + 'user_to_group_json/user_to_group_data_json'
+file_friend_data_json = path_out + 'friend_data_json/friend_data_json'
+file_user_to_friend = path_out +  'user_to_friend_json/user_to_friend_json'
 stat = 'statistics_json.csv'
 file_log = 'log.txt' 
 #### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
-# list_dirs = [path_fr_gr_out+file_user_to_friend.split('/')[0]+'/', 
-#                 path_fr_gr_out+file_friend_data.split('/')[0]+'/',
-#                 path_fr_gr_out+file_group_data.split('/')[0]+'/',
-#                 path_fr_gr_out+file_friend_to_group.split('/')[0]+'/',
+# list_dirs = [path_out+file_user_to_friend.split('/')[0]+'/', 
+#                 path_out+file_friend_data.split('/')[0]+'/',
+#                 path_out+file_group_data.split('/')[0]+'/',
+#                 path_out+file_friend_to_group.split('/')[0]+'/',
 #                 path_stat
 #             ]
 # for list_dir in list_dirs:
@@ -77,6 +81,7 @@ user_to_group_list = ['user_id', 'group_id']
 group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
 column_statistics = ['user_number', 'user_id', 'n_friends', 'start_time', 
                     'end_time','start_fmt', 'end_fmt', 'time_user']
+
 if (stat in os.listdir(path_stat)) == False:
     users_in_files = 0
     time_program_start = time.time()
@@ -104,6 +109,9 @@ else:
     user_list = list(set(user_list) - set(user_used_list))
 total_number_users = len(user_list_df)
 n_users_completed = len(user_used_list)
+
+
+
 def update_statistics(path_stat, stat, i, user_id, n_members, column_statistics, start_time, start_fmt):
     ####### update statistics##################
     end_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
@@ -117,8 +125,8 @@ def update_statistics(path_stat, stat, i, user_id, n_members, column_statistics,
     statistics_df.to_csv(path_stat + stat, encoding = 'utf-8', sep = ';')
     # if (i+1) % 1000 == 0:
     #     time_now = datetime.now().strftime(format = '%Y_%m_%d_%H_%m')
-    #     path_fr_gr_out = './output_friends_and_group/'
-    #     path_stat = path_fr_gr_out + 'statistics/'
+    #     path_out = './output_friends_and_group/'
+    #     path_stat = path_out + 'statistics/'
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     # return 0    
 for i, user_id in enumerate(user_list):
@@ -178,7 +186,7 @@ for i, user_id in enumerate(user_list):
         continue
     try:
         request_time = time.time()
-        with open(path_fr_gr_out+file_user_to_group_json+'_'+str(i+1)+'_'+user_id+'_json.json','w') as f_json:
+        with open(path_out+file_user_to_group_json+'_'+str(i+1)+'_'+user_id+'_json.json','w') as f_json:
             json.dump(req, f_json)
         print(f'time of of json file creating {time.time() - request_time} sec')  
     except TypeError as e:
@@ -201,12 +209,12 @@ for i, user_id in enumerate(user_list):
             update_statistics(path_stat, stat, i,  user_id+'_exception_friends_request', n_members,  column_statistics, start_time,     start_fmt)
             print('excepttion for friends request occur')
             print('request key error: ', e)
-            with open(path_fr_gr_out+path_stat+file_log, 'a') as f_log:
+            with open(path_out+path_stat+file_log, 'a') as f_log:
                 f_log.write(f'Unnable to write json for | {user_id} | with TypeError {e} | friends request \n')
             continue 
         try:
             request_time = time.time()
-            with open(path_fr_gr_out+file_friend_data_json+'_'+str(i+1)+'_'+user_id+'_json'+str(i_offser+1)+'.json','w') as f_json:
+            with open(path_out+file_friend_data_json+'_'+str(i+1)+'_'+user_id+'_json'+str(i_offser+1)+'.json','w') as f_json:
                 json.dump(res_friends.json(), f_json)
             print(f'time of of json file creating {time.time() - request_time} sec')  
         except TypeError as e:
