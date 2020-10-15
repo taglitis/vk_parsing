@@ -98,19 +98,20 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     return 0
 
-def parse_vk(i):
+def parse_vk(i, p):
     # print(user_list[i])
     # a = 100000*100000 + 3*10000000+100000*60000000
-    result = 1 # user_list[i]
-    # time.sleep(2)
-    time.sleep(2)
+    result = p*p # user_list[i]
+    ts = time.time()
+    time.sleep(i)
+    print(time.time()-ts)
     return (i, result)
 
 
 def get_result(result):
     global results
     results.append(result)
-
+# https://www.machinelearningplus.com/python/parallel-processing-python/
 # asynch: https://towardsdatascience.com/asynchronous-parallel-programming-in-python-with-multiprocessing-a3fc882b4023
 if __name__ == '__main__':
 #### GLOBAL VAR #################
@@ -165,12 +166,13 @@ if __name__ == '__main__':
 
     user_list, total_number_users, n_users_completed = read_stat_data()
     batch_size = 10
-    results = []
-    ts = time.time()
 
-    for i in range(0, batch_size):
-        get_result(parse_vk(i))
-    print('Time in serial:', time.time() - ts)
+    #Serial processsing:
+    # results = []
+    # ts = time.time()
+    # for i in range(0, batch_size):
+    #     get_result(parse_vk(i))
+    # print('Time in serial:', time.time() - ts)
     # print(results)
 
     
@@ -188,6 +190,7 @@ if __name__ == '__main__':
     
     time_list = []
     
+    print(f'Core # {mp.cpu_count()}')
     for i in range(batch_cnt):
         time_iter_begin = time.time()
         if batch_size*(i+1) <= len(user_list):
@@ -196,18 +199,19 @@ if __name__ == '__main__':
         else:
             i_start = batch_size*i
             i_end = len(user_list)
-#            display(dataset.iloc[i_start:i_end, :])  
+#            display(dataset.iloc[i_start:i_end, :]) 
         pool = mp.Pool(mp.cpu_count())
         print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
+            print('j ', j)
             # pool.apply_async(my_function, args=(i, params[i, 0], params[i, 1], params[i, 2]), callback=get_result) 
-            pool.apply_async(parse_vk, args=(j), callback=get_result) 
+            pool.apply_async(parse_vk, args=(j, j), callback=get_result) 
         print('Time in parallel:', time.time() - ts)    
         pool.close()
         pool.join()
         
-        # print(results) 
+        print('results: \n', results) 
         print("1 loop ended!") 
         break      
  
