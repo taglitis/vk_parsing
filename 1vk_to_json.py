@@ -98,8 +98,78 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     return 0
 
+def json_to_df(extract_dict):
+    try:
+        extract_dict['country']
+    except:
+        return [np.nan]*14
+    if extract_dict['country']['id'] == 4:
+        list_users_id = str(int(extract_dict['id']))
+        try:
+            list_users_fn = extract_dict['first_name']
+        except:
+            list_users_fn = np.nan                
+        try:
+            list_users_ln = extract_dict['last_name']
+        except:
+            list_users_ln = np.nan                
+        try:
+            list_users_country = extract_dict['country']['title']
+        except:
+            list_users_country = np.nan
+        try:
+            list_users_sex = str(extract_dict['sex'])
+        except:
+            list_users_sex = np.nan
+        try:
+            list_users_photo = str(extract_dict['photo_max_orig'])
+        except:
+            list_users_photo=np.nan
+        try:
+            list_users_city = extract_dict['city']['title']
+        except:
+            list_users_city = np.nan
+        try:
+            list_users_bdate = extract_dict[i]['bdate']
+        except:
+            list_users_bdate = np.nan
+        try:
+            list_users_lseen = str(extract_dict['last_seen']['time'])
+            real_time = datetime.utcfromtimestamp(int(extract_dict['last_seen']['time'])).strftime('%Y-%m-%d')
+            list_users_lseen_real = str(real_time)
+        except:
+            list_users_lseen = np.nan
+            list_users_lseen_real = np.nan
+        try:
+            list_users_univercity= str(extract_dict['univercity'])
+        except:
+            list_users_univercity = np.nan
+        try:
+            list_users_faculty = str(extract_dict['faculty'])
+        except:
+            list_users_faculty = np.nan
+        try:
+            list_users_graduation = str(extract_dict['graduation'])
+        except:
+            list_users_graduation = np.nan
+        try:
+            list_users_mobile = str(extract_dict['mobile_phone'])
+        except:
+            list_users_mobile = np.nan
+        return [list_users_id, list_users_fn, list_users_ln,  list_users_bdate, list_users_city, list_users_country, 
+               list_users_sex, list_users_mobile, list_users_photo,
+               list_users_lseen, list_users_univercity,
+               list_users_faculty, list_users_graduation, list_users_lseen_real]
+    else:
+        return [np.nan]*14 
+
+
 def parse_vk(i, user_id, token, api_version):
     time_limit = 3.0001
+    step_offset = 1000
+    friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
+                    'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
+                    'faculty', 'graduation', 'last_seen_real']
     fields_param = 'country,sex,bdate,city,country'\
                     ',photo_max_orig, online_mobile,has_mobile,contacts'\
                     ',connections,site,education,universities,schools,'\
@@ -113,16 +183,12 @@ def parse_vk(i, user_id, token, api_version):
         print(f'request {e}, type: {type(e)}')
         req = {'count': 0, 'items': []}
     duration = time.time()-ts  
-    print('duration1: ', duration)  
     if  duration <= time_limit: time.sleep(time_limit - duration)
     n_members = req['count']
-    print('n_numbers: ', n_members)
     req = {'response': {'count': n_members,  'items': []}} 
     for i_offset, offset in enumerate(range(0, n_members+1, 1000)):     
         url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}&count=1000&access_token={token}&v={api_version}&fields={fields_param}'
         ts = time.time()
-        print('url_friend: ', url_friend)
-        print('i_offset, offset ', i_offset, offset)
         try:
             req_temp = requests.get(url_friend, timeout=None)
             req_temp = req_temp.json()
@@ -130,10 +196,17 @@ def parse_vk(i, user_id, token, api_version):
             print(f'request {e}, type: {type(e)}')
             req_temp = {'response': {'count': n_members,  'items': []}}
         req['response']['items'] = req['response']['items'] + req_temp['response']['items']
-        duration = time.time()-ts    
-        print('duration2:', duration) 
-        if  duration <= time_limit: time.sleep(time_limit - duration)
-    print('req:', req)
+        duration = time.time()-ts
+        if n_members > step_offset:   
+            print('XOXO') 
+            if  duration <= time_limit: time.sleep(time_limit - duration)
+    # print('before req: \n', req['response']['items'])
+    # if n_members == 2:   req = json_to_df(req['response']['items'])
+    extracted = [] 
+    for i_extract, extract_dict in enumerate(req['response']['items']): 
+        extracted.append(json_to_df(extract_dict))
+    friends_data = pd.DataFrame(columns = friend_column_list, data = extracted)
+    print('friends_data: \n', friends_data)
     return (i, req)
 
 
@@ -180,9 +253,6 @@ if __name__ == '__main__':
     print(token_dict)
 
     i_token = 1
-    friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
-                        'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
-                        'faculty', 'graduation', 'last_seen_real']
     user_to_friend_list = ['user_id','friend_id']
     user_to_group_list = ['user_id', 'group_id']
     group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
@@ -218,13 +288,10 @@ if __name__ == '__main__':
         else:
             i_start = batch_size * i
             i_end = len(user_list)
-#            display(dataset.iloc[i_start:i_end, :]) 
         pool = mp.Pool(mp.cpu_count())
         print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
-            # print('token ', token_dict[i_token])
-            # pool.apply_async(my_function, args=(i, params[i, 0], params[i, 1], params[i, 2]), callback=get_result) 
             pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], api_version), callback=get_result) 
         i_token += 1
         if i_token == 4: i_token = 1
