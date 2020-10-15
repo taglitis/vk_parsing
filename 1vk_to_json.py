@@ -98,19 +98,28 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     return 0
 
-def parse_vk(i, p):
-    # print(user_list[i])
-    # a = 100000*100000 + 3*10000000+100000*60000000
-    result = p*p # user_list[i]
-    ts = time.time()
-    time.sleep(i)
-    print(time.time()-ts)
-    return (i, result)
+def parse_vk(i, user_id, token, api_version):
+    url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&access_token={token}&v={api_version}'
+    try:
+        req = requests.get(url_friend, timeout=None)
+        req = req.json()['response']   
+    except requests.exceptions.RequestException as e:
+        print(f'request {e}, type: {type(e)}')
+        req = {'count': 0, 'items': []}
+
+    n_members = req['count']
+    print('n_numbers: ', n_members)
+
+    
+    # print('req:', req)
+    return (i, req)
 
 
 def get_result(result):
     global results
     results.append(result)
+
+
 # https://www.machinelearningplus.com/python/parallel-processing-python/
 # asynch: https://towardsdatascience.com/asynchronous-parallel-programming-in-python-with-multiprocessing-a3fc882b4023
 if __name__ == '__main__':
@@ -165,7 +174,7 @@ if __name__ == '__main__':
     #### GLOBAL VAR ENDED #################                    
 
     user_list, total_number_users, n_users_completed = read_stat_data()
-    batch_size = 10
+    batch_size = 3
 
     #Serial processsing:
     # results = []
@@ -177,41 +186,35 @@ if __name__ == '__main__':
 
     
     ts = time.time()
-    
-    # for i in range(0, params.shape[0]):
-    #     pool.apply_async(my_function, args=(i, params[i, 0], params[i, 1], params[i, 2]), callback=get_result)
-    # pool.close()
-    # pool.join()
-    # print('Time in parallel:', time.time() - ts)
-    # print(results)    
-
     results = []
     batch_cnt = math.ceil(len(user_list) / batch_size)
-    
+    print('batch_cnt: ', batch_cnt)
     time_list = []
     
     print(f'Core # {mp.cpu_count()}')
     for i in range(batch_cnt):
         time_iter_begin = time.time()
         if batch_size*(i+1) <= len(user_list):
-            i_start = batch_size*i
-            i_end = batch_size*(i+1)
+            i_start = batch_size * i
+            i_end = batch_size * (i+1)
         else:
-            i_start = batch_size*i
+            i_start = batch_size * i
             i_end = len(user_list)
 #            display(dataset.iloc[i_start:i_end, :]) 
         pool = mp.Pool(mp.cpu_count())
         print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
-            print('j ', j)
+            # print('token ', token_dict[i_token])
             # pool.apply_async(my_function, args=(i, params[i, 0], params[i, 1], params[i, 2]), callback=get_result) 
-            pool.apply_async(parse_vk, args=(j, j), callback=get_result) 
-        print('Time in parallel:', time.time() - ts)    
+            pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], api_version), callback=get_result) 
+        i_token += 1
+        if i_token == 4: i_token = 1
         pool.close()
         pool.join()
-        
-        print('results: \n', results) 
+
+        print('Time in parallel:', time.time() - ts)          
+        # print('results: \n', results) 
         print("1 loop ended!") 
         break      
  
