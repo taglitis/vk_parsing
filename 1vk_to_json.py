@@ -99,19 +99,41 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     return 0
 
 def parse_vk(i, user_id, token, api_version):
+    time_limit = 3.0001
+    fields_param = 'country,sex,bdate,city,country'\
+                    ',photo_max_orig, online_mobile,has_mobile,contacts'\
+                    ',connections,site,education,universities,schools,'\
+                    ',can_write_private_message,status,last_seen,relation,relatives'
     url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&access_token={token}&v={api_version}'
+    ts = time.time()
     try:
         req = requests.get(url_friend, timeout=None)
         req = req.json()['response']   
     except requests.exceptions.RequestException as e:
         print(f'request {e}, type: {type(e)}')
         req = {'count': 0, 'items': []}
-
+    duration = time.time()-ts  
+    print('duration1: ', duration)  
+    if  duration <= time_limit: time.sleep(time_limit - duration)
     n_members = req['count']
     print('n_numbers: ', n_members)
-
-    
-    # print('req:', req)
+    req = {'response': {'count': n_members,  'items': []}} 
+    for i_offset, offset in enumerate(range(0, n_members+1, 1000)):     
+        url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}&count=1000&access_token={token}&v={api_version}&fields={fields_param}'
+        ts = time.time()
+        print('url_friend: ', url_friend)
+        print('i_offset, offset ', i_offset, offset)
+        try:
+            req_temp = requests.get(url_friend, timeout=None)
+            req_temp = req_temp.json()
+        except requests.exceptions.RequestException as e:
+            print(f'request {e}, type: {type(e)}')
+            req_temp = {'response': {'count': n_members,  'items': []}}
+        req['response']['items'] = req['response']['items'] + req_temp['response']['items']
+        duration = time.time()-ts    
+        print('duration2:', duration) 
+        if  duration <= time_limit: time.sleep(time_limit - duration)
+    print('req:', req)
     return (i, req)
 
 
@@ -158,10 +180,6 @@ if __name__ == '__main__':
     print(token_dict)
 
     i_token = 1
-    fields_param = 'country,sex,bdate,city,country'\
-                    ',photo_max_orig, online_mobile,has_mobile,contacts'\
-                    ',connections,site,education,universities,schools,'\
-                    ',can_write_private_message,status,last_seen,relation,relatives'
     friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
                         'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
                         'faculty', 'graduation', 'last_seen_real']
@@ -174,7 +192,7 @@ if __name__ == '__main__':
     #### GLOBAL VAR ENDED #################                    
 
     user_list, total_number_users, n_users_completed = read_stat_data()
-    batch_size = 3
+    batch_size = 5
 
     #Serial processsing:
     # results = []
