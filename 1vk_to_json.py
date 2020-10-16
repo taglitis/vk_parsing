@@ -97,8 +97,9 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     path_stat = path_out + 'statistics/'
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     return 0
-
-def json_to_df(extract_dict):
+    
+def creat_base(i, extract_dict):
+        
     try:
         extract_dict['country']
     except:
@@ -161,52 +162,58 @@ def json_to_df(extract_dict):
                list_users_lseen, list_users_univercity,
                list_users_faculty, list_users_graduation, list_users_lseen_real]
     else:
-        return [np.nan]*14 
+        return [np.nan]*14  
 
 
 def parse_vk(i, user_id, token, api_version):
     time_limit = 3.0001
-    step_offset = 1000
+    step_offset = 2000
+    api_version = '5.89'
     friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
                     'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
                     'faculty', 'graduation', 'last_seen_real']
     fields_param = 'country,sex,bdate,city,country'\
                     ',photo_max_orig, online_mobile,has_mobile,contacts'\
                     ',connections,site,education,universities,schools,'\
-                    ',can_write_private_message,status,last_seen,relation,relatives'
-    url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&access_token={token}&v={api_version}'
+                    ',can_write_private_message,status,last_seen,relation,relatives'    
+    url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}'
+    url_friend+= f'&offset=0&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
     ts = time.time()
     try:
         req = requests.get(url_friend, timeout=None)
-        req = req.json()['response']   
+        req = req.json()
     except requests.exceptions.RequestException as e:
         print(f'request {e}, type: {type(e)}')
-        req = {'count': 0, 'items': []}
-    duration = time.time()-ts  
-    if  duration <= time_limit: time.sleep(time_limit - duration)
-    n_members = req['count']
-    req = {'response': {'count': n_members,  'items': []}} 
-    for i_offset, offset in enumerate(range(0, n_members+1, 1000)):     
-        url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}&count=1000&access_token={token}&v={api_version}&fields={fields_param}'
-        ts = time.time()
-        try:
-            req_temp = requests.get(url_friend, timeout=None)
-            req_temp = req_temp.json()
-        except requests.exceptions.RequestException as e:
-            print(f'request {e}, type: {type(e)}')
-            req_temp = {'response': {'count': n_members,  'items': []}}
-        req['response']['items'] = req['response']['items'] + req_temp['response']['items']
-        duration = time.time()-ts
-        if n_members > step_offset:   
-            print('XOXO') 
-            if  duration <= time_limit: time.sleep(time_limit - duration)
+        req = {'response': {'count': 0,  'items': []}}
+    duration = time.time()-ts 
+    n_members = req['response']['count'] 
+    iter_number = n_members // step_offset
+    iter_number_count = 1
+    if n_members >= step_offset:
+        if  duration <= time_limit: time.sleep(time_limit - duration)
+        for i_offset, offset in enumerate(range(step_offset, n_members+1, step_offset)):     
+            url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}'
+            url_friend+= f'&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
+            ts = time.time()
+            try:
+                req_temp = requests.get(url_friend, timeout=None)
+                req_temp = req_temp.json()
+            except requests.exceptions.RequestException as e:
+                print(f'request {e}, type: {type(e)}')
+                req_temp = {'response': {'count': n_members,  'items': []}}
+            req['response']['items'] = req['response']['items'] + req_temp['response']['items']
+            duration = time.time()-ts
+            if iter_number_count < iter_number:   
+                if  duration <= time_limit: time.sleep(time_limit - duration)
     # print('before req: \n', req['response']['items'])
     # if n_members == 2:   req = json_to_df(req['response']['items'])
     extracted = [] 
     for i_extract, extract_dict in enumerate(req['response']['items']): 
         extracted.append(json_to_df(extract_dict))
     friends_data = pd.DataFrame(columns = friend_column_list, data = extracted)
-    print('friends_data: \n', friends_data)
+    friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' )
+
+    # print('friends_data: \n', friends_data)
     return (i, req)
 
 
@@ -219,7 +226,8 @@ def get_result(result):
 # asynch: https://towardsdatascience.com/asynchronous-parallel-programming-in-python-with-multiprocessing-a3fc882b4023
 if __name__ == '__main__':
 #### GLOBAL VAR #################
-    api_version = '5.89'
+    global path_in, path_out, ext, file_user_to_group_df, file_friend_data_df, file_user_to_friend_df, path_stat, file_stat, file_log
+
     path_in = './data_in/'
     path_out = './data_out/'
     ext = '.csv'
@@ -228,9 +236,9 @@ if __name__ == '__main__':
     # file_friend_data = 'friend_data/friend_data'
     # file_group_data = 'group_data/group_data'
     # file_friend_to_group = 'user_to_group/user_to_group'
-    file_user_to_group_json = path_out + 'user_to_group_json/user_to_group_data_json'
-    file_friend_data_json = path_out + 'friend_data_json/friend_data_json'
-    file_user_to_friend = path_out +  'user_to_friend_json/user_to_friend_json'
+    file_user_to_group_df = path_out + 'user_to_group_json/user_to_group_data_df'
+    file_friend_data_df = path_out + 'friend_data_json/friend_data_df'
+    file_user_to_friend_df = path_out +  'user_to_friend_json/user_to_friend_df'
     path_stat = path_out + 'stat/'
     file_stat = 'statistics_json.csv'
     file_log = 'log.txt' 
@@ -251,8 +259,6 @@ if __name__ == '__main__':
     with open('./data_in/token_dict.txt', 'rb') as handle:
         token_dict = pickle.loads(handle.read()) 
     print(token_dict)
-
-    i_token = 1
     user_to_friend_list = ['user_id','friend_id']
     user_to_group_list = ['user_id', 'group_id']
     group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
@@ -262,7 +268,7 @@ if __name__ == '__main__':
     #### GLOBAL VAR ENDED #################                    
 
     user_list, total_number_users, n_users_completed = read_stat_data()
-    batch_size = 5
+    batch_size = 500
 
     #Serial processsing:
     # results = []
@@ -272,7 +278,7 @@ if __name__ == '__main__':
     # print('Time in serial:', time.time() - ts)
     # print(results)
 
-    
+    # user_list = ['53809740'] # needed to check specific user_id
     ts = time.time()
     results = []
     batch_cnt = math.ceil(len(user_list) / batch_size)
@@ -280,6 +286,7 @@ if __name__ == '__main__':
     time_list = []
     
     print(f'Core # {mp.cpu_count()}')
+    i_token = 1
     for i in range(batch_cnt):
         time_iter_begin = time.time()
         if batch_size*(i+1) <= len(user_list):
@@ -292,7 +299,7 @@ if __name__ == '__main__':
         print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
-            pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], api_version), callback=get_result) 
+            pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token]), callback=get_result) 
         i_token += 1
         if i_token == 4: i_token = 1
         pool.close()
