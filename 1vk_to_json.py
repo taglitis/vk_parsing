@@ -104,6 +104,7 @@ def remove_sep_from_string(a, sep = ';'):
     return a
 
 def json_to_df(extract_dict):
+    # print(extract_dict)
     try:
         extract_dict['country']
     except:
@@ -183,9 +184,11 @@ def json_to_df(extract_dict):
 
 
 
-def parse_vk(i, user_id, token, api_version):
+def parse_vk(i, user_id, token, kwargs):
     time_limit = 3.0001
     step_offset = 2000
+    ext = kwargs['ext']
+    file_friend_data_df = kwargs['file_friend_data_df']
     api_version = '5.89'
     friend_column_list = ['user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
                     'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
@@ -223,16 +226,19 @@ def parse_vk(i, user_id, token, api_version):
             duration = time.time()-ts
             if iter_number_count < iter_number:   
                 if  duration <= time_limit: time.sleep(time_limit - duration)
-    # print('before req: \n', req['response']['items'])
-    # if n_members == 2:   req = json_to_df(req['response']['items'])
     extracted = [] 
     for i_extract, extract_dict in enumerate(req['response']['items']): 
         extracted.append(json_to_df(extract_dict))
     friends_data = pd.DataFrame(columns = friend_column_list, data = extracted)
+    friends_data['user_id_initial'] = user_id
+    friends_data = friends_data[['user_id_initial', 'user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
+                    'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
+                    'faculty', 'graduation', 'last_seen_real']]
+    print(file_friend_data_df + '_' + user_id + ext)
     friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' )
 
-    # print('friends_data: \n', friends_data)
-    return (i, req)
+    print('friends_data: \n', friends_data.shape)
+    return (i, 1)
 
 
 def get_result(result):
@@ -254,12 +260,13 @@ if __name__ == '__main__':
     # file_friend_data = 'friend_data/friend_data'
     # file_group_data = 'group_data/group_data'
     # file_friend_to_group = 'user_to_group/user_to_group'
-    file_user_to_group_df = path_out + 'user_to_group_json/user_to_group_data_df'
-    file_friend_data_df = path_out + 'friend_data_json/friend_data_df'
-    file_user_to_friend_df = path_out +  'user_to_friend_json/user_to_friend_df'
+    file_user_to_group_df = path_out + 'user_to_group_df/user_to_group_data_df'
+    file_friend_data_df = path_out + 'friend_data_df/friend_data_df'
+    file_user_to_friend_df = path_out +  'user_to_friend_df/user_to_friend_df'
     path_stat = path_out + 'stat/'
-    file_stat = 'statistics_json.csv'
+    file_stat = 'statistics_df.csv'
     file_log = 'log.txt' 
+    kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
     # list_dirs = [path_out+file_user_to_friend.split('/')[0]+'/', 
     #                 path_out+file_friend_data.split('/')[0]+'/',
@@ -286,7 +293,7 @@ if __name__ == '__main__':
     #### GLOBAL VAR ENDED #################                    
 
     user_list, total_number_users, n_users_completed = read_stat_data()
-    batch_size = 500
+    batch_size = 10
 
     #Serial processsing:
     # results = []
@@ -317,7 +324,7 @@ if __name__ == '__main__':
         print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
-            pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token]), callback=get_result) 
+            pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], kwargs), callback=get_result) 
         i_token += 1
         if i_token == 4: i_token = 1
         pool.close()
