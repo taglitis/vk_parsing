@@ -98,7 +98,12 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     return 0
     
-def creat_base(i, extract_dict):
+def remove_sep_from_string(a, sep = ';'):
+    a = a.split(sep)
+    a = ''.join(a)
+    return a
+
+def creat_base(extract_dict):
         
     try:
         extract_dict['country']
