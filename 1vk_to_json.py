@@ -97,14 +97,13 @@ def update_statistics(i, user_id, n_members, column_statistics, start_time, star
     #     path_stat = path_out + 'statistics/'
     #     copyfile(path_stat+'statistics.csv', './output_friends_and_group/archive/statistics_'+time_now+'.csv')  
     return 0
-    
+
 def remove_sep_from_string(a, sep = ';'):
     a = a.split(sep)
     a = ''.join(a)
     return a
 
-def creat_base(extract_dict):
-        
+def json_to_df(extract_dict):
     try:
         extract_dict['country']
     except:
@@ -113,53 +112,66 @@ def creat_base(extract_dict):
         list_users_id = str(int(extract_dict['id']))
         try:
             list_users_fn = extract_dict['first_name']
+            list_users_fn = remove_sep_from_string(list_users_fn)
         except:
             list_users_fn = np.nan                
         try:
             list_users_ln = extract_dict['last_name']
+            list_users_ln = remove_sep_from_string(list_users_ln)
         except:
             list_users_ln = np.nan                
         try:
             list_users_country = extract_dict['country']['title']
+            list_users_country = remove_sep_from_string(list_users_country)
         except:
             list_users_country = np.nan
         try:
             list_users_sex = str(extract_dict['sex'])
+            list_users_sex = remove_sep_from_string(list_users_sex)
         except:
             list_users_sex = np.nan
         try:
             list_users_photo = str(extract_dict['photo_max_orig'])
+            list_users_photo = remove_sep_from_string(list_users_photo)
         except:
             list_users_photo=np.nan
         try:
             list_users_city = extract_dict['city']['title']
+            list_users_city = remove_sep_from_string(list_users_city)
         except:
             list_users_city = np.nan
         try:
             list_users_bdate = extract_dict[i]['bdate']
+            list_users_bdate = remove_sep_from_string(list_users_bdate)
         except:
             list_users_bdate = np.nan
         try:
             list_users_lseen = str(extract_dict['last_seen']['time'])
             real_time = datetime.utcfromtimestamp(int(extract_dict['last_seen']['time'])).strftime('%Y-%m-%d')
             list_users_lseen_real = str(real_time)
+            list_users_lseen = remove_sep_from_string(list_users_lseen)
+            list_users_lseen_real = remove_sep_from_string(list_users_lseen_real)
         except:
             list_users_lseen = np.nan
             list_users_lseen_real = np.nan
         try:
             list_users_univercity= str(extract_dict['univercity'])
+            list_users_univercity = remove_sep_from_string(list_users_univercity)
         except:
             list_users_univercity = np.nan
         try:
             list_users_faculty = str(extract_dict['faculty'])
+            list_users_faculty = remove_sep_from_string(list_users_faculty)
         except:
             list_users_faculty = np.nan
         try:
             list_users_graduation = str(extract_dict['graduation'])
+            list_users_graduation = remove_sep_from_string(list_users_graduation)
         except:
             list_users_graduation = np.nan
         try:
             list_users_mobile = str(extract_dict['mobile_phone'])
+            list_users_mobile = remove_sep_from_string(list_users_mobile)
         except:
             list_users_mobile = np.nan
         return [list_users_id, list_users_fn, list_users_ln,  list_users_bdate, list_users_city, list_users_country, 
@@ -167,7 +179,8 @@ def creat_base(extract_dict):
                list_users_lseen, list_users_univercity,
                list_users_faculty, list_users_graduation, list_users_lseen_real]
     else:
-        return [np.nan]*14  
+        return [np.nan]*14 
+
 
 
 def parse_vk(i, user_id, token, api_version):
