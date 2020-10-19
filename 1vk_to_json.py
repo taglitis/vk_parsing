@@ -156,8 +156,8 @@ def parse_vk(i, user_id, token, kwargs):
     friends_data = pd.DataFrame(columns = friend_column_list, data = extracted)
     friends_data['user_id'] = user_id
     friends_data = friends_data[['user_id', 'friend_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
-                    'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
-                    'faculty', 'graduation', 'last_seen_real']]
+                                 'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
+                                 'faculty', 'graduation', 'last_seen_real']]
 
 
     # if user_id != '1784':
@@ -179,17 +179,13 @@ def parse_vk(i, user_id, token, kwargs):
     except KeyError as e:
         print('Group request KeyError: ', e) 
 
+    req = [str(x) for x in req]
+    print('req_list ', req)
     friends_data.reset_index(drop = True, inplace = True)
     friends_data['groups_id'] = np.nan
-    
-    print('*********', friends_data[0]['groups_id'])
-    friends_data.at[0, 'groups_id'] = 'HELLO WORLD'  
-    print("friends_data['groups_id']")
-    print(friends_data['groups_id'])
-    # print('friends_data ', req)
-    # print('friends_data ', friends_data)
-    friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' )       
-
+    req = "|".join(req)
+    friends_data.loc[friends_data.index == 0, 'groups_id'] = req
+    friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' ) 
     return (i, user_id, n_members)
 
 
