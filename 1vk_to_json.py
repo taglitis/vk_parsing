@@ -282,13 +282,14 @@ if __name__ == '__main__':
     kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
     list_dirs = [path_out + dir_out for dir_out in os.listdir(path_out)]
-    # print(list_dirs)            
-    for list_dir in list_dirs:
-        list_file_dir = os.listdir(list_dir)
-        if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
-        # print('list_dir ', list_dir)
-        for file_remove in list_file_dir:
-            os.remove(list_dir+'/'+file_remove)
+    delete_files = True
+    if delete_files:         
+        for list_dir in list_dirs:
+            list_file_dir = os.listdir(list_dir)
+            if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
+            # print('list_dir ', list_dir)
+            for file_remove in list_file_dir:
+                os.remove(list_dir+'/'+file_remove)
     #########################################################  
         
     with open('./data_in/token_dict.txt', 'rb') as handle:
@@ -344,11 +345,10 @@ if __name__ == '__main__':
         print('Time in parallel:', time.time() - ts)    
         results = {x_tup[0]: x_tup for x_tup in results}
         results = {key: results[key] for key in sorted(results)}
-
         print('results: \n', results) 
+        results = []
         print("1 loop ended!") 
-        # if i == 1:
-        break      
+        if i == 1:        break      
  
 
 
