@@ -212,6 +212,12 @@ def parse_vk(i, user_id, token, kwargs):
         print(f'request {e}, type: {type(e)}')
         req = {'response': {'count': 0,  'items': []}}
     duration = time.time()-ts
+    try:  
+        n_members = req['response']['count']
+    except KeyError as e:
+        print('KeyError exception is', e)    
+        req = {'response': {'count': 0,  'items': []}}
+        n_members = 0
     iter_number = n_members // step_offset
     iter_number_count = 1
 
