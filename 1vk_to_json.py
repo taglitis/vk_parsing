@@ -182,9 +182,10 @@ def json_to_df(extract_dict):
     else:
         return [np.nan]*14 
 
-
+# def 
 
 def parse_vk(i, user_id, token, kwargs):
+    # print('*i= ', i)
     time_limit = 3.0001
     step_offset = 2000
     ext = kwargs['ext']
@@ -200,16 +201,20 @@ def parse_vk(i, user_id, token, kwargs):
     url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}'
     url_friend+= f'&offset=0&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
     ts = time.time()
+
     try:
         req = requests.get(url_friend, timeout=None)
         req = req.json()
+        if i == 3:
+            print('req for ', i, user_id)
+            print(req) 
     except requests.exceptions.RequestException as e:
         print(f'request {e}, type: {type(e)}')
         req = {'response': {'count': 0,  'items': []}}
-    duration = time.time()-ts 
-    n_members = req['response']['count'] 
+    duration = time.time()-ts
     iter_number = n_members // step_offset
     iter_number_count = 1
+
     if n_members >= step_offset:
         if  duration <= time_limit: time.sleep(time_limit - duration)
         for i_offset, offset in enumerate(range(step_offset, n_members+1, step_offset)):     
@@ -226,7 +231,8 @@ def parse_vk(i, user_id, token, kwargs):
             duration = time.time()-ts
             if iter_number_count < iter_number:   
                 if  duration <= time_limit: time.sleep(time_limit - duration)
-    extracted = [] 
+    extracted = []
+ 
     for i_extract, extract_dict in enumerate(req['response']['items']): 
         extracted.append(json_to_df(extract_dict))
     friends_data = pd.DataFrame(columns = friend_column_list, data = extracted)
@@ -234,11 +240,12 @@ def parse_vk(i, user_id, token, kwargs):
     friends_data = friends_data[['user_id_initial', 'user_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
                     'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
                     'faculty', 'graduation', 'last_seen_real']]
-    print(file_friend_data_df + '_' + user_id + ext)
+    # print(file_friend_data_df + '_' + user_id + ext)
     friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' )
 
-    print('friends_data: \n', friends_data.shape)
-    return (i, 1)
+    # print(f'i: , user_id: , friends_data: \n', i, user_id, friends_data.shape)
+    # print('**i= ', i)
+    return (i, user_id)
 
 
 def get_result(result):
@@ -268,22 +275,19 @@ if __name__ == '__main__':
     file_log = 'log.txt' 
     kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
-    # list_dirs = [path_out+file_user_to_friend.split('/')[0]+'/', 
-    #                 path_out+file_friend_data.split('/')[0]+'/',
-    #                 path_out+file_group_data.split('/')[0]+'/',
-    #                 path_out+file_friend_to_group.split('/')[0]+'/',
-    #                 path_stat
-    #             ]
-    # for list_dir in list_dirs:
-    #     list_file_dir = os.listdir(list_dir)
-    #     if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
-    #     for file_remove in list_file_dir:
-    #         os.remove(list_dir+file_remove)
+    list_dirs = [path_out + dir_out for dir_out in os.listdir(path_out)]
+    # print(list_dirs)            
+    for list_dir in list_dirs:
+        list_file_dir = os.listdir(list_dir)
+        if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
+        # print('list_dir ', list_dir)
+        for file_remove in list_file_dir:
+            os.remove(list_dir+'/'+file_remove)
     #########################################################  
         
     with open('./data_in/token_dict.txt', 'rb') as handle:
         token_dict = pickle.loads(handle.read()) 
-    print(token_dict)
+    # print(token_dict)
     user_to_friend_list = ['user_id','friend_id']
     user_to_group_list = ['user_id', 'group_id']
     group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
@@ -324,15 +328,20 @@ if __name__ == '__main__':
         print(f'batch_cnt: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
+            # print('j: ', j)
             pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], kwargs), callback=get_result) 
         i_token += 1
         if i_token == 4: i_token = 1
         pool.close()
         pool.join()
 
-        print('Time in parallel:', time.time() - ts)          
-        # print('results: \n', results) 
+        print('Time in parallel:', time.time() - ts)    
+        results = {x_tup[0]: x_tup for x_tup in results}
+        results = {key: results[key] for key in sorted(results)}
+
+        print('results: \n', results) 
         print("1 loop ended!") 
+        # if i == 1:
         break      
  
 
