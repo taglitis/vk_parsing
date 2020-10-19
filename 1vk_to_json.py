@@ -18,65 +18,6 @@ import math
 import multiprocessing as mp
 
 
-
-
-
-# process_number = input('Enter the process number: ')
-# process_number = int(process_number)
-# # parrallel processing : https://www.machinelearningplus.com/python/parallel-processing-python/
-# ###############################
-# if process_number == 1:
-#     start_for_number = "start_for_number 1"
-#     path_stat = path_out + 'statistics_json_df_1/'
-#     file_name_in = 'unique_users_1.csv'
-# elif process_number == 2:
-#     start_for_number = "start_for_number 2"
-#     path_stat = path_out + 'statistics_json_df_2/'
-#     file_name_in = 'unique_users_2.csv'
-# elif process_number == 3:
-#     start_for_number = "start_for_number 3"
-#     path_stat = path_out + 'statistics_json_df_3/'
-#     file_name_in = 'unique_users_3.csv'
-# else:
-#     print("Raw input error! Try again...") 
-#     sys.exit()   
-
-#########################################
-
-#Define global vars
-
-
-def read_stat_data():
-    if (file_stat in os.listdir(path_stat)) == False:
-        # get a list of initial user_ids
-        user_list_df = pd.read_csv(path_in+file_name_in, encoding = 'utf-8', sep = ';', 
-                                index_col = 0, dtype = {'user_id':str})
-        # Note to the above uesr_list_df: index_col gives warning  FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison mask |= (ar1 == a)                         
-        # display(user_list_df.head())                                
-        user_list = user_list_df.user_id.values.tolist()
-        statistics_df = pd.DataFrame(columns = column_statistics)
-        statistics_df.to_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';')
-        batch_start = 0
-        user_used_list = []
-    else:
-        #obtain the remaining user_is to collect data 
-        # get a list of initial user_ids
-        statistics_df = pd.read_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';',                                                
-                                    index_col = 0, dtype = {'user_id':str})
-        # display(statistics_df.head(2))                        
-        user_used_list = statistics_df.user_id.values.tolist()
-        user_list_df = pd.read_csv(path_in+file_name_in, encoding = 'utf-8', sep = ';',                                                   
-                                   index_col = 0, dtype = {'user_id':str})
-        user_list = user_list_df.user_id.values.tolist()
-        user_list = [x.split('_')[0] for x in user_list]
-        user_list = list(set(user_list) - set(user_used_list))
-    total_number_users = len(user_list_df)
-    n_users_completed = len(user_used_list)
-    return user_list, total_number_users, n_users_completed, batch_start
-
-
-
-
 def remove_sep_from_string(a, sep = ';'):
     a = a.split(sep)
     a = ''.join(a)
@@ -178,20 +119,16 @@ def parse_vk(i, user_id, token, kwargs):
     url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}'
     url_friend+= f'&offset=0&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
     ts = time.time()
-
     try:
         req = requests.get(url_friend, timeout=None)
         req = req.json()
-        if i == 3:
-            print('req for ', i, user_id)
-            print(req) 
     except requests.exceptions.RequestException as e:
         print(f'request {e}, type: {type(e)}')
         req = {'response': {'count': 0,  'items': []}}
     try:  
         n_members = req['response']['count']
     except KeyError as e:
-        print('KeyError exception is', e)    
+        # print('KeyError exception is', e)    
         req = {'response': {'count': 0,  'items': []}}
         n_members = 0
     iter_number = n_members // step_offset
@@ -201,7 +138,7 @@ def parse_vk(i, user_id, token, kwargs):
         if  duration <= time_limit: time.sleep(time_limit - duration)
         for i_offset, offset in enumerate(range(step_offset, n_members+1, step_offset)):     
             url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}'
-            url_friend+= f'&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
+            url_friend += f'&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
             ts = time.time()
             try:
                 req_temp = requests.get(url_friend, timeout = None)
@@ -213,8 +150,7 @@ def parse_vk(i, user_id, token, kwargs):
             duration = time.time()-ts
             if iter_number_count < iter_number:   
                 if  duration <= time_limit: time.sleep(time_limit - duration)
-    extracted = []
- 
+    extracted = [] 
     for i_extract, extract_dict in enumerate(req['response']['items']): 
         extracted.append(json_to_df(extract_dict))
     friends_data = pd.DataFrame(columns = friend_column_list, data = extracted)
@@ -222,14 +158,38 @@ def parse_vk(i, user_id, token, kwargs):
     friends_data = friends_data[['user_id', 'friend_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
                     'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
                     'faculty', 'graduation', 'last_seen_real']]
-    # print(file_friend_data_df + '_' + user_id + ext)
-    friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' )
+
+
+    # if user_id != '1784':
+    
 
     # print(f'i: , user_id: , friends_data: \n', i, user_id, friends_data.shape)
     # print('**i= ', i)
     duration = time.time()-ts
     # print('duration ', duration)
-    if  duration <= time_limit: time.sleep(time_limit - duration)
+    # if  duration <= time_limit: time.sleep(time_limit - duration)
+
+    url_group = f'https://api.vk.com/method/users.getSubscriptions?user_id={str(user_id)}&access_token={token}&v={api_version}'
+    try: 
+        req = requests.get(url_group, timeout=None).json()
+    except requests.exceptions.RequestException as e:
+        print(f'exception {e} groups occured')
+    try:
+        req = req['response']['users']['items']
+    except KeyError as e:
+        print('Group request KeyError: ', e) 
+
+    friends_data.reset_index(drop = True, inplace = True)
+    friends_data['groups_id'] = np.nan
+    
+    print('*********', friends_data[0]['groups_id'])
+    friends_data.at[0, 'groups_id'] = 'HELLO WORLD'  
+    print("friends_data['groups_id']")
+    print(friends_data['groups_id'])
+    # print('friends_data ', req)
+    # print('friends_data ', friends_data)
+    friends_data.to_csv(file_friend_data_df + '_' + user_id + ext, encoding = 'utf-8', sep = ';' )       
+
     return (i, user_id, n_members)
 
 
@@ -238,8 +198,8 @@ def get_result(result):
     results.append(result)
 
 def check_consist(batch_users):
-    print(path_out+'')
-    file_list = os.listdir(path_out+'friend_data_df')
+    # print(path_out+'')
+    file_list = os.listdir(path_out + 'friend_data_df')
     count_files = 0
     for file_name in file_list:
         if file_name.split('.')[-1]  == 'csv':
@@ -254,24 +214,68 @@ def check_consist(batch_users):
 
 def update_statistics(**kwargs):
     ####### update statistics##################
-    print('results: \n', results) 
-    print('kwargs: \n',  kwargs)
+    # print('results: \n', results) 
+    # print('kwargs: \n',  kwargs)
     statistics_df = pd.read_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';', index_col = 0, dtype = {'user_id':str})
-    print('statistics_df')
-    display(statistics_df)
-    ['batch_number', 'user_id', 'n_friends', 'batch_start_time', 
-                         'batch_end_time', 'batch_duratin', 'average_batch_duration', 'batch_start_fmt', 'batch_end_fmt']
+    # print('statistics_df')
+    # display(statistics_df)
     stat_list = []                     
     for i in range(0, len(results)):
         stat_list_temp = [kwargs['batch_number'], results[i][1], results[i][2], kwargs['batch_start'], kwargs['batch_end'], 
         kwargs['batch_duration'], kwargs['average_batch_duration'], kwargs['batch_start_fmt'], kwargs['batch_end_fmt']]
         stat_list.append(stat_list_temp)
-    print(stat_list)
+    # print(stat_list)
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])  
     df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list)      
     df_stat = df_stat.append(df_stat_temp)
     df_stat.to_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8')
     return 0
+
+def read_stat_data():
+    if (file_stat in os.listdir(path_stat)) == False:
+        # get a list of initial user_ids
+        user_list_df = pd.read_csv(path_in+file_name_in, encoding = 'utf-8', sep = ';', 
+                                index_col = 0, dtype = {'user_id':str})
+        # Note to the above uesr_list_df: index_col gives warning  FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison mask |= (ar1 == a)                         
+        # display(user_list_df.head())                                
+        user_list = user_list_df.user_id.values.tolist()
+        statistics_df = pd.DataFrame(columns = column_statistics)
+        statistics_df.to_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';')
+        batch_start_count = 0
+        user_used_list = []
+    else:
+        #obtain the remaining user_is to collect data 
+        # get a list of initial user_ids
+        statistics_df = pd.read_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';',                                                
+                                    index_col = 0, dtype = {'user_id':str})
+        # display(statistics_df.head(2))                        
+        user_used_list = statistics_df.user_id.values.tolist()
+        user_list_df = pd.read_csv(path_in+file_name_in, encoding = 'utf-8', sep = ';',                                                   
+                                   index_col = 0, dtype = {'user_id':str})
+        user_list = user_list_df.user_id.values.tolist()
+
+        user_list = list(set(user_list) - set(user_used_list))
+        batch_start_count = max(statistics_df.batch_number.values.tolist()) + 1
+
+
+        file_list = os.listdir(path_out + 'friend_data_df')
+        user_id_in_file = []
+        for file_name in file_list:
+            if file_name.split('.')[-1]  == 'csv':
+                user_id_in_file.append(file_name.split('.')[0].split('_')[-1])
+        print('XOXOXO')
+        print(sum(~statistics_df.user_id.isin(user_id_in_file)))        
+    # if batch_users == count_files:
+    #     print('Consistancy check is succesful')
+    #     return 0
+    # else:
+    #     print('Consistancy check is failed')
+    #     sys.exit(0)
+
+
+    total_number_users = len(user_list_df)
+    n_users_completed = len(user_used_list)
+    return user_list, total_number_users, n_users_completed, batch_start_count    
 
 
 # https://www.machinelearningplus.com/python/parallel-processing-python/
@@ -297,7 +301,7 @@ if __name__ == '__main__':
     kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
     list_dirs = [path_out + dir_out for dir_out in os.listdir(path_out)]
-    delete_files = True
+    delete_files = True          ########################******************########################
     if delete_files:         
         for list_dir in list_dirs:
             list_file_dir = os.listdir(list_dir)
@@ -318,9 +322,8 @@ if __name__ == '__main__':
 
     #### GLOBAL VAR ENDED #################                    
 
-    user_list, total_number_users, n_users_completed, batch_start = read_stat_data()
-    user_list, total_number_users, n_users_completed, batch_start
-    batch_size = 10
+    user_list, total_number_users, n_users_completed, batch_start_count = read_stat_data()
+    batch_size = 2
 
     #Serial processsing:
     # results = []
@@ -338,7 +341,9 @@ if __name__ == '__main__':
     bathc_duration_list = []
     print(f'Core # {mp.cpu_count()}')
     i_token = 1
-    for i in range(batch_start, batch_cnt):
+    # print('batch_start: ', batch_start_count)
+    for i in range(batch_start_count, batch_cnt):
+        print('***i=', i)
         batch_start = time.time()
         batch_start_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
         time_iter_begin = time.time()
@@ -376,7 +381,8 @@ if __name__ == '__main__':
         results = {key: results[key] for key in sorted(results)}                  
         results = []
         print(f"{i}th loop ended!") 
-        if i == 1:        break    
+        print('***************batch_start_count', batch_start_count)
+        if i == batch_start_count + 1: break    
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])
     display(df_stat)  
  
