@@ -299,7 +299,7 @@ if __name__ == '__main__':
     kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
     list_dirs = [path_out + dir_out for dir_out in os.listdir(path_out)]
-    delete_files = True          ########################******************########################
+    delete_files = False          ########################******************########################
     if delete_files:         
         for list_dir in list_dirs:
             list_file_dir = os.listdir(list_dir)
@@ -336,7 +336,7 @@ if __name__ == '__main__':
     results = []
     batch_cnt = math.ceil(len(user_list) / batch_size)
     print('batch_cnt: ', batch_cnt)
-    bathc_duration_list = []
+    batch_duration_list = []
     print(f'Core # {mp.cpu_count()}')
     i_token = 1
     # print('batch_start: ', batch_start_count)
@@ -368,18 +368,18 @@ if __name__ == '__main__':
         batch_end = time.time()
         batch_end_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
         batch_duration = batch_end - batch_start
-        bathc_duration_list.append(batch_duration)
+        batch_duration_list.append(batch_duration)
         # print('results: \n', results) 
         check_consist((i+1) * batch_size)
         update_statistics(batch_number = i, batch_start = batch_start, 
-                        batch_end = batch_end, batch_duration = batch_duration, average_batch_duration = mean(bathc_duration_list),
+                        batch_end = batch_end, batch_duration = batch_duration, average_batch_duration = mean(batch_duration_list),
                         batch_start_fmt = batch_start_fmt, batch_end_fmt = batch_end_fmt)
         
         results = {x_tup[0]: x_tup for x_tup in results}
         results = {key: results[key] for key in sorted(results)}                  
         results = []
         print(f"{i}th loop ended!") 
-        print('***************batch_start_count', batch_start_count)
+        print('Elepsed time until completion', (batch_cnt - 1) * mean(batch_duration_list) / 60 /60, " hours")
         if i == batch_start_count + 1: break    
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])
     display(df_stat)  
