@@ -117,7 +117,7 @@ def parse_vk(i, user_id, token, kwargs):
                     ',connections,site,education,universities,schools,'\
                     ',can_write_private_message,status,last_seen,relation,relatives'    
     url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}'
-    url_friend+= f'&offset=0&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
+    url_friend+= f'&offset=0&count={step_offset}&access_token={token[0]}&v={api_version}&fields={fields_param}'
     ts = time.time()
     try:
         req = requests.get(url_friend, timeout=None)
@@ -138,7 +138,7 @@ def parse_vk(i, user_id, token, kwargs):
         if  duration <= time_limit: time.sleep(time_limit - duration)
         for i_offset, offset in enumerate(range(step_offset, n_members+1, step_offset)):     
             url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}'
-            url_friend += f'&count={step_offset}&access_token={token}&v={api_version}&fields={fields_param}'
+            url_friend += f'&count={step_offset}&access_token={token[0]}&v={api_version}&fields={fields_param}'
             ts = time.time()
             try:
                 req_temp = requests.get(url_friend, timeout = None)
@@ -150,6 +150,7 @@ def parse_vk(i, user_id, token, kwargs):
             duration = time.time()-ts
             if iter_number_count < iter_number:   
                 if  duration <= time_limit: time.sleep(time_limit - duration)
+            iter_number_count += 1    
     extracted = [] 
     for i_extract, extract_dict in enumerate(req['response']['items']): 
         extracted.append(json_to_df(extract_dict))
@@ -165,11 +166,11 @@ def parse_vk(i, user_id, token, kwargs):
 
     # print(f'i: , user_id: , friends_data: \n', i, user_id, friends_data.shape)
     # print('**i= ', i)
-    duration = time.time()-ts
+    # duration = time.time()-ts
     # print('duration ', duration)
     # if  duration <= time_limit: time.sleep(time_limit - duration)
 
-    url_group = f'https://api.vk.com/method/users.getSubscriptions?user_id={str(user_id)}&access_token={token}&v={api_version}'
+    url_group = f'https://api.vk.com/method/users.getSubscriptions?user_id={str(user_id)}&access_token={token[1]}&v={api_version}'
     try: 
         req = requests.get(url_group, timeout=None).json()
     except requests.exceptions.RequestException as e:
@@ -194,7 +195,6 @@ def get_result(result):
     results.append(result)
 
 def check_consist(batch_users):
-    # print(path_out+'')
     file_list = os.listdir(path_out + 'friend_data_df')
     count_files = 0
     for file_name in file_list:
@@ -222,7 +222,9 @@ def update_statistics(**kwargs):
         stat_list.append(stat_list_temp)
     # print(stat_list)
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])  
-    df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list)      
+    df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list)
+    df_stat_temp.loc[1:,['batch_start_time', 'batch_end_time', 'batch_duratin', 'average_batch_duration', 
+                          'batch_start_fmt', 'batch_end_fmt']]  = np.nan    
     df_stat = df_stat.append(df_stat_temp)
     df_stat.to_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8')
     return 0
@@ -319,7 +321,7 @@ if __name__ == '__main__':
     #### GLOBAL VAR ENDED #################                    
 
     user_list, total_number_users, n_users_completed, batch_start_count = read_stat_data()
-    batch_size = 2
+    batch_size = 10
 
     #Serial processsing:
     # results = []
@@ -356,7 +358,7 @@ if __name__ == '__main__':
             # print('j: ', j)
             pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], kwargs), callback=get_result) 
         i_token += 1
-        if i_token == 4: i_token = 1
+        if i_token == len(token_dict) + 1: i_token = 1
         pool.close()
         pool.join()
        
