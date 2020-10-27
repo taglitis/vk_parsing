@@ -103,7 +103,6 @@ def json_to_df(extract_dict):
         return [np.nan]*14 
 
 def parse_vk(i, user_id, token, kwargs):
-    # print('*i= ', i)
     time_limit = 3.0001
     step_offset = 2000
     ext = kwargs['ext']
@@ -128,7 +127,6 @@ def parse_vk(i, user_id, token, kwargs):
     try:  
         n_members = req['response']['count']
     except KeyError as e:
-        # print('KeyError exception is', e)    
         req = {'response': {'count': 0,  'items': []}}
         n_members = 0
     iter_number = n_members // step_offset
@@ -159,17 +157,6 @@ def parse_vk(i, user_id, token, kwargs):
     friends_data = friends_data[['user_id', 'friend_id', 'first_name', 'last_name', 'bdate', 'city', 'country',  
                                  'sex', 'mobile_phone', 'photo', 'last_seen', 'univercities',
                                  'faculty', 'graduation', 'last_seen_real']]
-
-
-    # if user_id != '1784':
-    
-
-    # print(f'i: , user_id: , friends_data: \n', i, user_id, friends_data.shape)
-    # print('**i= ', i)
-    # duration = time.time()-ts
-    # print('duration ', duration)
-    # if  duration <= time_limit: time.sleep(time_limit - duration)
-
     url_group = f'https://api.vk.com/method/users.getSubscriptions?user_id={str(user_id)}&access_token={token[1]}&v={api_version}'
     try: 
         req = requests.get(url_group, timeout=None).json()
@@ -178,10 +165,9 @@ def parse_vk(i, user_id, token, kwargs):
     try:
         req = req['response']['users']['items']
     except KeyError as e:
-        print('Group request KeyError: ', e) 
-
+        pass
+        # print('Group request KeyError: ', e) 
     req = [str(x) for x in req]
-    print('req_list ', req)
     friends_data.reset_index(drop = True, inplace = True)
     friends_data['groups_id'] = np.nan
     req = "|".join(req)
@@ -207,20 +193,14 @@ def check_consist(batch_users):
         print('Consistancy check is failed')
         sys.exit(0)
 
-
 def update_statistics(**kwargs):
     ####### update statistics##################
-    # print('results: \n', results) 
-    # print('kwargs: \n',  kwargs)
     statistics_df = pd.read_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';', index_col = 0, dtype = {'user_id':str})
-    # print('statistics_df')
-    # display(statistics_df)
     stat_list = []                     
     for i in range(0, len(results)):
         stat_list_temp = [kwargs['batch_number'], results[i][1], results[i][2], kwargs['batch_start'], kwargs['batch_end'], 
         kwargs['batch_duration'], kwargs['average_batch_duration'], kwargs['batch_start_fmt'], kwargs['batch_end_fmt']]
         stat_list.append(stat_list_temp)
-    # print(stat_list)
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])  
     df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list)
     df_stat_temp.loc[1:,['batch_start_time', 'batch_end_time', 'batch_duratin', 'average_batch_duration', 
@@ -235,7 +215,6 @@ def read_stat_data():
         user_list_df = pd.read_csv(path_in+file_name_in, encoding = 'utf-8', sep = ';', 
                                 index_col = 0, dtype = {'user_id':str})
         # Note to the above uesr_list_df: index_col gives warning  FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison mask |= (ar1 == a)                         
-        # display(user_list_df.head())                                
         user_list = user_list_df.user_id.values.tolist()
         statistics_df = pd.DataFrame(columns = column_statistics)
         statistics_df.to_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';')
@@ -246,7 +225,6 @@ def read_stat_data():
         # get a list of initial user_ids
         statistics_df = pd.read_csv(path_stat + file_stat, encoding = 'utf-8', sep = ';',                                                
                                     index_col = 0, dtype = {'user_id':str})
-        # display(statistics_df.head(2))                        
         user_used_list = statistics_df.user_id.values.tolist()
         user_list_df = pd.read_csv(path_in+file_name_in, encoding = 'utf-8', sep = ';',                                                   
                                    index_col = 0, dtype = {'user_id':str})
@@ -254,23 +232,12 @@ def read_stat_data():
 
         user_list = list(set(user_list) - set(user_used_list))
         batch_start_count = max(statistics_df.batch_number.values.tolist()) + 1
-
-
         file_list = os.listdir(path_out + 'friend_data_df')
         user_id_in_file = []
         for file_name in file_list:
             if file_name.split('.')[-1]  == 'csv':
                 user_id_in_file.append(file_name.split('.')[0].split('_')[-1])
-        print('XOXOXO')
         print(sum(~statistics_df.user_id.isin(user_id_in_file)))        
-    # if batch_users == count_files:
-    #     print('Consistancy check is succesful')
-    #     return 0
-    # else:
-    #     print('Consistancy check is failed')
-    #     sys.exit(0)
-
-
     total_number_users = len(user_list_df)
     n_users_completed = len(user_used_list)
     return user_list, total_number_users, n_users_completed, batch_start_count    
@@ -281,15 +248,10 @@ def read_stat_data():
 if __name__ == '__main__':
 #### GLOBAL VAR #################
     global path_in, path_out, ext, file_user_to_group_df, file_friend_data_df, file_user_to_friend_df, path_stat, file_stat, file_log
-
     path_in = './data_in/'
     path_out = './data_out/'
     ext = '.csv'
     file_name_in = 'unique_users'+ext
-    # file_user_to_friend = 'user_to_friend/user_to_friend' 
-    # file_friend_data = 'friend_data/friend_data'
-    # file_group_data = 'group_data/group_data'
-    # file_friend_to_group = 'user_to_group/user_to_group'
     file_user_to_group_df = path_out + 'user_to_group_df/user_to_group_data_df'
     file_friend_data_df = path_out + 'friend_data_df/friend_data_df'
     file_user_to_friend_df = path_out +  'user_to_friend_df/user_to_friend_df'
@@ -304,34 +266,19 @@ if __name__ == '__main__':
         for list_dir in list_dirs:
             list_file_dir = os.listdir(list_dir)
             if 'desktop.ini' in list_file_dir: list_file_dir.remove('desktop.ini')
-            # print('list_dir ', list_dir)
             for file_remove in list_file_dir:
                 os.remove(list_dir+'/'+file_remove)
-    #########################################################  
-        
+    #########################################################          
     with open('./data_in/token_dict.txt', 'rb') as handle:
         token_dict = pickle.loads(handle.read()) 
-    # print(token_dict)
     user_to_friend_list = ['user_id','friend_id']
     user_to_group_list = ['user_id', 'group_id']
     group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
     column_statistics = ['batch_number', 'user_id', 'n_friends', 'batch_start_time', 
                          'batch_end_time', 'batch_duratin', 'average_batch_duration', 'batch_start_fmt', 'batch_end_fmt']
-
-    #### GLOBAL VAR ENDED #################                    
-
+    #### GLOBAL VAR ENDED #################     
     user_list, total_number_users, n_users_completed, batch_start_count = read_stat_data()
     batch_size = 10
-
-    #Serial processsing:
-    # results = []
-    # ts = time.time()
-    # for i in range(0, batch_size):
-    #     get_result(parse_vk(i))
-    # print('Time in serial:', time.time() - ts)
-    # print(results)
-
-    # user_list = ['53809740'] # needed to check specific user_id
     ts = time.time()
     results = []
     batch_cnt = math.ceil(len(user_list) / batch_size)
@@ -339,9 +286,8 @@ if __name__ == '__main__':
     batch_duration_list = []
     print(f'Core # {mp.cpu_count()}')
     i_token = 1
-    # print('batch_start: ', batch_start_count)
     for i in range(batch_start_count, batch_cnt):
-        print('***i=', i)
+        # print('***i=', i)
         batch_start = time.time()
         batch_start_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
         time_iter_begin = time.time()
@@ -360,10 +306,9 @@ if __name__ == '__main__':
         i_token += 1
         if i_token == len(token_dict) + 1: i_token = 1
         pool.close()
-        pool.join()
-       
+        pool.join()      
 
-        print('Time in parallel:', time.time() - ts)    
+        print('Time in asynch threading:', time.time() - ts)    
 
         batch_end = time.time()
         batch_end_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
@@ -383,122 +328,3 @@ if __name__ == '__main__':
         if i == batch_start_count + 1: break    
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])
     display(df_stat)  
- 
-
-
-
-
-
-# for i, user_id in enumerate(user_list):
-#     start_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
-#     start_time = time.time()
-#     # i+=index_start
-
-#     i+=n_users_completed
-#     #### CREATE & REFRASH DATAFRAMES #####
-#     df_friend_data = pd.DataFrame(columns=friend_column_list)
-#     df_user_to_friend = pd.DataFrame(columns=user_to_friend_list)
-#     df_user_to_group = pd.DataFrame(columns=user_to_group_list)
-#     ###########################
-#     print('*'*50) 
-#     print('*'*50)
-#     print("******************* Process number is ", process_number)
-#     print(f' {i + 1 - index_start - n_users_completed} user {user_id} is in calculation process')
-#     print(f'current time is {start_fmt}')
-#     print('*'*50) 
-#     url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&access_token={token_dict[2]}&v={api_version}'
-#     #get number of users
-#     try: 
-#         request_time = time.time()
-#         req = requests.get(url_friend, timeout=None)
-#         print(req)
-#         req = req.json()['response']
-#         i_token+=1
-#         if i_token == 5: i_token = 1
-#         print(f'duration of friend number request {time.time()- request_time} sec')
-#         # it was checked that when 'error_code': 30, 'error_msg': 'This profile is private' - exception occurs 
-#         n_members = len(req['items'])
-#         print(f'user_id # {user_id} has {n_members} friends')
-#     except KeyError as e:
-#         print('ATTENCTION')
-#         print(f'exception {e} count_friends occured')
-#         print('***********ATTENCTION')
-#         n_members = 0
-#         df_friend_data = pd.DataFrame(columns = friend_column_list)
-#         update_statistics(path_stat, stat, i, user_id+'_exception_N_friends_request', n_members,  column_statistics, start_time, start_fmt)
-#         with open(path_stat+file_log, 'a') as f_log:
-#                 f_log.write(f'Unnable to write json for | {user_id} | with TypeError {e} | N friends request \n')
-#         continue
-#     #get groups the user in 
-#     url_group = f'https://api.vk.com/method/users.getSubscriptions?user_id={str(user_id)}&access_token={token_dict[2]}&v={api_version}'
-#     try: 
-#         request_time = time.time()
-#         req = requests.get(url_group, timeout=None).json()['response']['groups']
-#         i_token+=1
-#         if i_token == 5: i_token = 1
-#         print(f'duration of group number request {time.time()- request_time} sec')
-#     except KeyError as e:
-#         print('ATTENCTION')
-#         print(f'exception {e} groups occured')
-#         print('***********ATTENCTION')
-#         with open(path_stat+file_log, 'a') as f_log:
-#                 f_log.write(f'Unnable to write json for | {user_id} | with TypeError {e} | group request \n')
-#         update_statistics(path_stat, stat, i,  user_id+'_exception_group_request', n_members,  column_statistics, start_time, start_fmt)    
-#         continue
-#     try:
-#         request_time = time.time()
-#         with open(path_out+file_user_to_group_json+'_'+str(i+1)+'_'+user_id+'_json.json','w') as f_json:
-#             json.dump(req, f_json)
-#         print(f'time of of json file creating {time.time() - request_time} sec')  
-#     except TypeError as e:
-#         print(f'Unnable to write json for {str(user_id)}')    
-#         with open(path_stat+file_log, 'a') as f_log:
-#             f_log.write(f'Unnable to write json for | {str(user_id)} | with TypeError {e} | group request json to file \n')    
-#         update_statistics(path_stat, stat, i,  user_id+'_exception_group_request', n_members,  column_statistics, start_time, start_fmt)    
-#         continue          
-
-#     request_time_start = time.time()
-#     i_token = 1
-#     time_friend_data_extract = time.time()
-#     for i_offser, offset in enumerate(range(0, n_members+1, 1000)):     
-#         url_friend = f'https://api.vk.com/method/friends.get?user_id={str(user_id)}&offset={offset}&count=1000&access_token={token_dict[i_token]}&v={api_version}&fields={fields_param}'
-#         try:
-#             request_time = time.time()
-#             res_friends = requests.get(url_friend, timeout=None)
-#             print(f'duration of friend data request {time.time() - request_time} sec')
-#         except KeyError as e:
-#             update_statistics(path_stat, stat, i,  user_id+'_exception_friends_request', n_members,  column_statistics, start_time,     start_fmt)
-#             print('excepttion for friends request occur')
-#             print('request key error: ', e)
-#             with open(path_out+path_stat+file_log, 'a') as f_log:
-#                 f_log.write(f'Unnable to write json for | {user_id} | with TypeError {e} | friends request \n')
-#             continue 
-#         try:
-#             request_time = time.time()
-#             with open(path_out+file_friend_data_json+'_'+str(i+1)+'_'+user_id+'_json'+str(i_offser+1)+'.json','w') as f_json:
-#                 json.dump(res_friends.json(), f_json)
-#             print(f'time of of json file creating {time.time() - request_time} sec')  
-#         except TypeError as e:
-#             print(f'Unnable to write json for {str(user_id)}')    
-#             with open(path_stat+file_log, 'a') as f_log:
-#                 f_log.write(f'Unnable to write json for | {str(user_id)} | with TypeError {e} | friends request json to file \n')    
-#             update_statistics(path_stat, stat, i,  user_id+'_exception_friends_request', n_members,  column_statistics, start_time, start_fmt)    
-#             continue        
-#     ###########UPDATE_STAT#########################
-#     update_statistics(path_stat, stat, i, user_id, n_members,  column_statistics, start_time, start_fmt)
-#     ##############################################
-#     print(f'{i+1} users were processed')
-#     print(f'Execution for one user {(time.time() - start_time)} sec')
-#     print(f'Total time of execution since the beginnig {statistics_df.time_user.sum()/60/60} hours')
-#     print(f'{round((i+1-index_start-n_users_completed)/total_number_users*100,2)} % were processed') 
-#     print(f'current time is {datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")}')
-#     print('*'*30)
-#     print('*'*30)
-#     print('*'*30)    
-#     print('*'*60)
-#     print('*'*60)
-#     print('*'*25+" "*5+'(i+1)= '+str(i+1)+" "*5+'*'*25)  
-#     print('*'*60)
-#     print('*'*60)      
-#     if (i+1)%(225) == 0: clear_output(wait=True)
-# print('Game over'+'\n')
