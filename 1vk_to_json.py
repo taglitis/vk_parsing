@@ -180,18 +180,29 @@ def get_result(result):
     global results
     results.append(result)
 
-def check_consist(batch_users):
-    file_list = os.listdir(path_out + 'friend_data_df')
-    count_files = 0
-    for file_name in file_list:
-        if file_name.split('.')[-1]  == 'csv':
-            count_files += 1
-    if batch_users == count_files:
-        print('Consistancy check is succesful')
-        return 0
+def check_consist(df, batch_number):
+    list_dir = os.listdir(path_out + 'friend_data_df')
+    list_user_id = [x.split('.')[-2].split('_')[-1] for x in list_dir if x.split('.')[-1] == 'csv']
+    # df = pd.read_csv(path_stat + 'statistics_df.csv', sep=';', encoding = 'utf-8', dtype={'user_id':str}, index_col = 0)
+    diff_elements = list(set(list_user_id) - set(df.user_id.to_list()))
+    diff_length = len(diff_elements)
+    # print('list_user_id:\n', list_user_id)
+    # print('df.user_id.to_list()):\n', df.user_id.to_list())
+    # print('diff_elements', diff_elements)
+    min_index = df.loc[df.batch_number == batch_number, :].index.min()
+    if len(list_user_id) == len(df.user_id.to_list()):
+        print("Consistency test was passed")
+    elif len(list_user_id) > len(df.user_id.to_list()):
+        print(f"Consistency test was not passed. More files than records in df на {diff_length} records")
+        df.at[min_index, 'direction'] = diff_length
+        df.at[min_index, 'missed_elements'] = '|'.join(list_user_id)
     else:
-        print('Consistancy check is failed')
-        sys.exit(0)
+        print(f"Consistency test was not passed. More records in stat file than files на {diff_length} records")
+        df.at[min_index, 'direction'] = diff_length
+        df.at[min_index, 'missed_elements'] = '|'.join(list_user_id)
+
+    return df    
+
 
 def update_statistics(**kwargs):
     ####### update statistics##################
@@ -199,13 +210,16 @@ def update_statistics(**kwargs):
     stat_list = []                     
     for i in range(0, len(results)):
         stat_list_temp = [kwargs['batch_number'], results[i][1], results[i][2], kwargs['batch_start'], kwargs['batch_end'], 
-        kwargs['batch_duration'], kwargs['average_batch_duration'], kwargs['batch_start_fmt'], kwargs['batch_end_fmt']]
+        kwargs['batch_duration'], kwargs['average_batch_duration'], kwargs['batch_start_fmt'], kwargs['batch_end_fmt'], None, None]
         stat_list.append(stat_list_temp)
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])  
     df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list)
     df_stat_temp.loc[1:,['batch_start_time', 'batch_end_time', 'batch_duratin', 'average_batch_duration', 
-                          'batch_start_fmt', 'batch_end_fmt']]  = np.nan    
+                          'batch_start_fmt', 'batch_end_fmt', 'direction', 'missed_elements']]  = np.nan    
     df_stat = df_stat.append(df_stat_temp)
+    print('df_stat\n', df_stat)
+    df_stat = check_consist(batch_number = kwargs['batch_number'], df = df_stat)
+    df_stat.reset_index(drop=True)
     df_stat.to_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8')
     return 0
 
@@ -240,6 +254,7 @@ def read_stat_data():
         print(sum(~statistics_df.user_id.isin(user_id_in_file)))        
     total_number_users = len(user_list_df)
     n_users_completed = len(user_used_list)
+    # sys.exit(0)
     return user_list, total_number_users, n_users_completed, batch_start_count    
 
 
@@ -261,7 +276,7 @@ if __name__ == '__main__':
     kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
     list_dirs = [path_out + dir_out for dir_out in os.listdir(path_out)]
-    delete_files = False          ########################******************########################
+    delete_files = True          ########################******************########################
     if delete_files:         
         for list_dir in list_dirs:
             list_file_dir = os.listdir(list_dir)
@@ -275,10 +290,11 @@ if __name__ == '__main__':
     user_to_group_list = ['user_id', 'group_id']
     group_data_column_list = ['group_id', 'name', 'screen_name', 'description']
     column_statistics = ['batch_number', 'user_id', 'n_friends', 'batch_start_time', 
-                         'batch_end_time', 'batch_duratin', 'average_batch_duration', 'batch_start_fmt', 'batch_end_fmt']
+                         'batch_end_time', 'batch_duratin', 'average_batch_duration', 
+                         'batch_start_fmt', 'batch_end_fmt', 'direction', 'missed_elements']
     #### GLOBAL VAR ENDED #################     
     user_list, total_number_users, n_users_completed, batch_start_count = read_stat_data()
-    batch_size = 10
+    batch_size = 1000
     ts = time.time()
     results = []
     batch_cnt = math.ceil(len(user_list) / batch_size)
@@ -315,16 +331,16 @@ if __name__ == '__main__':
         batch_duration = batch_end - batch_start
         batch_duration_list.append(batch_duration)
         # print('results: \n', results) 
-        check_consist((i+1) * batch_size)
         update_statistics(batch_number = i, batch_start = batch_start, 
                         batch_end = batch_end, batch_duration = batch_duration, average_batch_duration = mean(batch_duration_list),
                         batch_start_fmt = batch_start_fmt, batch_end_fmt = batch_end_fmt)
+
         
         results = {x_tup[0]: x_tup for x_tup in results}
         results = {key: results[key] for key in sorted(results)}                  
         results = []
         print(f"{i}th loop ended!") 
         print('Elepsed time until completion', (batch_cnt - 1) * mean(batch_duration_list) / 60 /60, " hours")
-        if i == batch_start_count + 1: break    
+        # if i == batch_start_count + 1: break    
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])
     display(df_stat)  
