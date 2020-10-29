@@ -198,7 +198,7 @@ def check_consist(df, batch_number):
         df.at[min_index, 'missed_elements'] = '|'.join(diff_elements)
         for x in diff_elements:
             stat_list_temp = [batch_number, x, None, None, None, None, None, None, None, None, None]
-            df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list)
+            df_stat_temp = pd.DataFrame(columns = column_statistics, data = stat_list_temp)
             df = df.append(df_stat_temp)
     else:
         print(f"Consistency test was not passed. More records in stat file than files on {diff_length} records")
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     kwargs = {'file_friend_data_df' : file_friend_data_df, 'ext' : ext} 
     ### REMOVE FILES FOR DIRECTORIES DURING DEBUGGING ####
     list_dirs = [path_out + dir_out for dir_out in os.listdir(path_out)]
-    delete_files = False          ########################******************########################
+    delete_files = True          ########################******************########################
     if delete_files:         
         for list_dir in list_dirs:
             list_file_dir = os.listdir(list_dir)
@@ -324,18 +324,19 @@ if __name__ == '__main__':
             i_start = batch_size * i
             i_end = len(user_list)
         pool = mp.Pool(mp.cpu_count())
-        print(f'batch_cnt_left: {batch_cnt - batch_start_count}, batch_cnt_total: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
+        print(f'batch_cnt_left: {batch_cnt - i},      batch_cnt_total: {batch_cnt}     i_start: {i_start}     i_end: {i_end}')
         time_begin = time.time()
         for j in range(i_start, i_end):
-            # print('j: ', j)
+            #serial:
+            # (j_out, user_id_out, n_members_out) = parse_vk(j, user_list[j], token_dict[i_token], friend_column_list, kwargs)
+            # result_j = (j_out, user_id_out, n_members_out)
+            # get_result(result_j) 
+            #asynch: 
             pool.apply_async(parse_vk, args=(j, user_list[j], token_dict[i_token], friend_column_list, kwargs), callback=get_result) 
         i_token += 1
         if i_token == len(token_dict) + 1: i_token = 1
         pool.close()
         pool.join()      
-
-        print('Time in asynch threading:', time.time() - ts)    
-
         batch_end = time.time()
         batch_end_fmt = datetime.now().strftime("%Y-%m-%d @ %H:%M:%S")
         batch_duration = batch_end - batch_start
@@ -344,13 +345,16 @@ if __name__ == '__main__':
         update_statistics(batch_number = i, batch_start = batch_start, 
                         batch_end = batch_end, batch_duration = batch_duration, average_batch_duration = mean(batch_duration_list),
                         batch_start_fmt = batch_start_fmt, batch_end_fmt = batch_end_fmt)
-
-        
         results = {x_tup[0]: x_tup for x_tup in results}
         results = {key: results[key] for key in sorted(results)}                  
         results = []
+        print("*"*30)        
         print(f"{i}th loop ended!") 
-        print('Elepsed time until completion', (batch_cnt - 1) * mean(batch_duration_list) / 60 /60, " hours")
-        if i == batch_start_count + 9: break    
+        print('Time in asynch threading:', round(batch_duration, 2))    
+        print(f'Everage batch duration {round(mean(batch_duration_list),2)}, sec')
+        print('Elepsed time until completion', round((batch_cnt - i) * mean(batch_duration_list) / 60 /60, 2), 
+              " hours ~ ", round((batch_cnt - i) * mean(batch_duration_list) / 60 / 60 / 24, 2),  ' days')
+        print('<'*20, '-'*30, '>'*20)
+        # if i == batch_start_count + 1: break    
     df_stat = pd.read_csv(path_stat + file_stat, sep = ';', encoding = 'utf-8').drop(columns = ['Unnamed: 0'])
     display(df_stat)  
